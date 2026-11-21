@@ -1,0 +1,61 @@
+:root { font-family: Inter, "Segoe UI", sans-serif; color: #0b1c30; background: #f8f9ff; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+h1, h2, p { margin: 0; }
+h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); letter-spacing: -.035em; }
+h2 { font-size: 1.35rem; }
+p, small { color: #465671; }
+small { display: block; font-size: .88rem; }
+button, input, select { font: inherit; }
+button { background: #0028be; color: white; border: 1px solid transparent; border-radius: .65rem; padding: .65rem 1rem; cursor: pointer; font-weight: 600; }
+button:disabled { opacity: .6; cursor: wait; }
+.secondary { background: #fff; color: #173289; border-color: #cbd7ee; }
+label { display: grid; gap: .4rem; font-weight: 600; }
+input, select { width: 100%; background: white; border: 1px solid #b8c7e2; border-radius: .55rem; padding: .65rem .75rem; color: inherit; }
+label small { font-weight: 400; }
+:focus-visible { outline: 3px solid #526ef6; outline-offset: 2px; }
+.brand { display: flex; align-items: center; gap: .7rem; }
+.brand > span { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .75rem; background: #0028be; color: white; font-size: 1.3rem; font-weight: 700; }
+.brand strong { color: #0028be; font-size: 1.35rem; }
+.login { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+.login-intro { background: #e5eeff; display: grid; align-content: center; gap: 1.1rem; padding: clamp(2rem, 8vw, 8rem); }
+.login-form { display: grid; align-content: center; justify-items: center; padding: 2rem; }
+.login-options { width: min(100%, 26rem); display: grid; gap: 1rem; }
+.shell { display: grid; grid-template-columns: 15rem minmax(0, 1fr); min-height: 100vh; }
+aside, header, .panel { background: white; border: 1px solid #dce4f4; }
+aside { padding: 1.3rem; }
+.shop-context { display: grid; gap: .2rem; margin-top: 1.6rem; border-radius: .7rem; background: #eff4ff; padding: .8rem; }
+.shop-context + nav { margin-top: .7rem; }
+nav { margin-top: 2rem; display: grid; gap: .4rem; }
+nav span, nav button { display: block; text-align: left; padding: .65rem .8rem; border-radius: .6rem; background: #e5eeff; color: #0028be; }
+nav button:not([aria-current]) { background: transparent; color: #465671; }
+.check { display: flex; align-items: center; gap: .5rem; }
+.check input { width: auto; }
+fieldset { border: 1px solid #dce4f4; border-radius: .7rem; padding: .8rem; min-width: 0; }
+legend { font-weight: 600; }
+.thumbnail { width: 2.4rem; height: 2.4rem; object-fit: cover; vertical-align: middle; margin-right: .6rem; border-radius: .4rem; }
+header { min-height: 4.5rem; padding: .75rem clamp(1rem, 4vw, 2.5rem); display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.workspace main { display: grid; gap: 1rem; max-width: 84rem; margin: auto; padding: clamp(1rem, 4vw, 2.5rem); }
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.page-head p { margin-top: .4rem; }
+.account-guide { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.account-guide p { margin-top: .4rem; }
+.metric strong { display: block; font-size: 1.65rem; margin-top: .3rem; }
+.panel { border-radius: .85rem; padding: 1.25rem; box-shadow: 0 1px 5px #0b1c3008; }
+.stack { display: grid; gap: 1rem; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
+.actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: .8rem .7rem; border-bottom: 1px solid #e5eeff; }
+th { color: #465671; font-size: .9rem; }
+.status { display: inline-block; background: #eff2f8; color: #465671; border-radius: 2rem; padding: .25rem .55rem; font-size: .9rem; }
+.active { background: #e0f5e8; color: #075532; }
+.error { background: #ffeded; color: #8c1717; padding: .65rem .8rem; border-radius: .45rem; }
+.statement { margin-top: 1rem; }
+summary { cursor: pointer; font-weight: 600; }
+@media (max-width: 760px) {
+  .login, .shell { grid-template-columns: 1fr; }
+  .login { align-content: start; }
+  nav { margin-top: 1rem; display: flex; flex-wrap: wrap; }
+}
