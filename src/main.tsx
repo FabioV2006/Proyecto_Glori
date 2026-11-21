@@ -6,6 +6,9 @@ import { Catalog, MyProfile } from './catalog'
 import { NewSale, Schedules } from './sales'
 import { CustomerAccount, ShopAccount } from './accounts'
 import { Overview, Settings } from './overview'
+import { ArrowRight, BookOpen, CalendarDays, ChartColumn, ContactRound, House, LogOut, Menu, Package, ReceiptText, Settings2, Store, Wallet, X } from 'lucide-react'
+import '@fontsource-variable/dm-sans'
+import '@fontsource/fraunces/latin-600.css'
 import './style.css'
 
 type User = {
@@ -19,13 +22,18 @@ type User = {
 
 type Shop = { id: number; name: string; timezone: string; active: boolean }
 const roles = { platform: 'Administrador de plataforma', shop: 'Administrador de tienda', client: 'Cliente' }
+const sections = [
+  ['Inicio', House], ['Catálogo', Package], ['Clientes', ContactRound], ['Nueva venta', ReceiptText],
+  ['Cuentas por cobrar', BookOpen], ['Cronogramas', CalendarDays], ['Pagos', Wallet],
+  ['Reportes', ChartColumn], ['Configuración', Settings2],
+] as const
 
 function ErrorMessage({ message }: { message: string }) {
   return message ? <p role="alert" className="error">{message}</p> : null
 }
 
 function Brand() {
-  return <div className="brand"><span aria-hidden>G</span><div><strong>Glori</strong><small>Créditos y cobranzas</small></div></div>
+  return <div className="brand"><Store aria-hidden="true" /><div><strong>Glori</strong><small>Créditos y cobranzas</small></div></div>
 }
 
 function Login({ onLogin }: { onLogin: (user: User) => void }) {
@@ -48,8 +56,8 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
     }
   }
   return <main className="login">
-    <section className="login-intro"><Brand /><h1>Crédito para tu comercio</h1>
-      <p>Consulta tu cuenta o administra las ventas y cobranzas de tu tienda.</p>
+    <section className="login-intro"><Brand /><div className="login-caption"><h1>Crédito para tu comercio.</h1>
+      <p>Consulta tu cuenta o administra las ventas y cobranzas de tu tienda.</p></div>
     </section>
     <section className="login-form"><div className="login-options"><form onSubmit={event => {
       event.preventDefault()
@@ -59,7 +67,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
       <label>Usuario<input name="username" autoComplete="username" required /></label>
       <label>Contraseña<input name="password" type="password" autoComplete="current-password" required /></label>
       <ErrorMessage message={error} />
-      <button disabled={busy}>{busy ? 'Ingresando…' : 'Ingresar'}</button>
+      <button disabled={busy}>{busy ? 'Ingresando…' : 'Ingresar'} <ArrowRight size={18} aria-hidden="true" /></button>
     </form>
     {demo && <section className="panel stack" aria-label="Accesos de demostración">
       <h2>Probar la demo</h2>
@@ -153,6 +161,7 @@ function App() {
   const [user, setUser] = useState<User | null>()
   const [error, setError] = useState('')
   const [shopSection, setShopSection] = useState('Inicio')
+  const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => {
     void api<User | null>('/me').then(setUser).catch(failure => setError(failure.message))
   }, [])
@@ -161,6 +170,7 @@ function App() {
       await api('/logout', 'POST')
       setUser(null)
       setShopSection('Inicio')
+      setMenuOpen(false)
     } catch (failure) {
       setError((failure as Error).message)
     }
@@ -169,18 +179,20 @@ function App() {
   if (!user) return <Login onLogin={setUser} />
   const section = user.role === 'platform' ? 'Tiendas' : user.role === 'shop' ? shopSection : 'Mi cuenta'
   return <div className="shell">
-    <aside><Brand />
+    <aside><div className="rail-head"><Brand />
+      {user.role === 'shop' && <button className="menu-toggle" aria-controls="sections" aria-expanded={menuOpen}
+        onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />} Menú</button>}</div>
       {user.shop_name && <div className="shop-context"><strong>{user.shop_name}</strong><small>{roles[user.role]}</small></div>}
-      <nav aria-label="Navegación principal">
-      {user.role === 'shop' ? ['Inicio', 'Catálogo', 'Clientes', 'Nueva venta', 'Cuentas por cobrar', 'Cronogramas', 'Pagos', 'Reportes', 'Configuración'].map(label =>
+      <nav id="sections" className={menuOpen ? 'open' : ''} aria-label="Navegación principal">
+      {user.role === 'shop' ? sections.map(([label, Icon]) =>
         <button key={label} aria-current={label === section ? 'page' : undefined}
-          onClick={() => setShopSection(label)}>{label === 'Nueva venta' ? 'Ventas al crédito' : label}</button>) : <span aria-current="page">{section}</span>}
+          onClick={() => { setShopSection(label); setMenuOpen(false) }}><Icon size={18} aria-hidden="true" />{label === 'Nueva venta' ? 'Ventas al crédito' : label}</button>) : <span aria-current="page">{section}</span>}
     </nav></aside>
     <div className="workspace">
       <header><div><strong>{user.shop_name ?? 'Plataforma Glori'}</strong><small>{roles[user.role]} · {user.username}</small></div>
-        <button className="secondary" onClick={() => void logout()}>Cerrar sesión</button>
+        <button className="secondary" onClick={() => void logout()}><LogOut size={16} aria-hidden="true" />Cerrar sesión</button>
       </header>
-      <main><ErrorMessage message={error} />
+      <main key={section}><ErrorMessage message={error} />
         {user.role === 'platform' ? <Shops switchAccount={() => void logout()} /> : user.role === 'client' ? <><MyProfile /><CustomerAccount /></> :
           section === 'Catálogo' ? <Catalog key="products" mode="products" /> :
           section === 'Clientes' ? <Catalog key="clients" mode="clients" /> :

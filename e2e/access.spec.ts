@@ -1,6 +1,21 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+test('el acceso y el menú del comercio funcionan a 360 px con movimiento reducido', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible()
+  await page.getByRole('button', { name: 'Entrar a Bodegas Gloria' }).click()
+  const menu = page.getByRole('button', { name: 'Menú' })
+  await expect(menu).toHaveAttribute('aria-expanded', 'false')
+  await menu.click()
+  await page.getByRole('button', { name: 'Ventas al crédito' }).click()
+  await expect(menu).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'Previsualizar' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
+})
+
 async function login(page: Page, username: string, password = 'Glori-demo-2026') {
   await page.getByLabel('Usuario', { exact: true }).fill(username)
   await page.getByLabel('Contraseña', { exact: true }).fill(password)
