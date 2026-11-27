@@ -19,9 +19,10 @@ def rate_text(rate):
 
 
 def simulate(payload):
-    if set(payload) != {"principal", "tea", "late_tea", "months", "periods"}:
+    required = {"principal", "tea", "late_tea", "months", "periods"}
+    if not required <= payload.keys() or payload.keys() - required - {"initial", "rate_change"}:
         raise ValueError("Indica monto, TEA, TEA de mora, plazo y configuración por periodo.")
-    principal = positive(payload["principal"], "El monto")
+    principal = positive(payload["principal"], "El monto", decimals=2 if "initial" in payload else 16)
     tea = positive(payload["tea"], "La TEA", decimals=7)
     late_tea = positive(payload["late_tea"], "La TEA de mora", decimals=7)
     months = payload["months"]
@@ -38,45 +39,66 @@ def simulate(payload):
             raise ValueError("Los días de demora deben ser enteros mayores o iguales a cero.")
     if all(row["grace"] != "normal" for row in periods):
         raise ValueError("Al menos un periodo debe quedar sin gracia para amortizar el préstamo.")
+    initial = str(payload.get("initial", "0"))
+    if not re.fullmatch(r"[0-9]{1,16}(?:\.[0-9]{1,2})?", initial) or Decimal(initial) >= principal:
+        raise ValueError("La inicial debe ser menor que el precio y tener hasta dos decimales.")
+    change = payload.get("rate_change")
+    if change is not None:
+        if (not isinstance(change, dict) or type(change.get("period")) is not int
+                or not 2 <= change["period"] <= len(periods)):
+            raise ValueError("El cambio de TEA debe empezar entre la segunda y la última cuota.")
+        change = (change["period"] - 1, positive(change.get("tea"), "La nueva TEA", decimals=7))
     try:
         with localcontext(Context(prec=80)):
-            return schedule(principal, tea / 100, late_tea / 100, periods)
+            funded = principal - Decimal(initial)
+            annual = [tea] * len(periods)
+            if change:
+                start, new_tea = change
+                annual[start:] = [new_tea] * (len(periods) - start)
+            result = schedule(funded, annual, late_tea / 100, periods)
+            total = result.pop("total_exact")
+            return {**result, "price": money(principal), "initial": money(Decimal(initial)),
+                    "sale_total": money(total + Decimal(initial))}
     except DecimalException as exc:
         raise ValueError("El resultado excede la precisión admitida. Revisa las tasas y los días.") from exc
 
 
-def schedule(principal, tea, late_tea, periods):
-    growth = (1 + tea) ** (Decimal(15) / 360)
-    # Valor actual de las cuotas normales unitarias que quedan desde cada fila.
-    # La gracia parcial conserva el saldo; la total descuenta un periodo adicional.
-    weights = [Decimal(0)] * (len(periods) + 1)
-    for i in reversed(range(len(periods))):
-        mode = periods[i]["grace"]
-        weights[i] = (weights[i+1] if mode == "partial" else
-                      (weights[i+1] + int(mode == "normal")) / growth)
-    fixed = principal / weights[0]
+def schedule(principal, annual, late_tea, periods, period_days=15):
+    growth = [(1 + tea / 100) ** (Decimal(period_days) / 360) for tea in annual]
+    # En cada cambio se recalcula la cuota sobre el saldo y plazo restantes.
+    # La proyección usa la tasa vigente hasta el siguiente recálculo.
+    last_normal = max(i for i, row in enumerate(periods) if row["grace"] == "normal")
     balance = principal
     rows = []
     interests = payments = penalties = Decimal(0)
     for i, row in enumerate(periods):
-        interest = balance * (growth - 1)
+        if i == 0 or annual[i] != annual[i-1]:
+            weight = Decimal(0)
+            for future in reversed(periods[i:]):
+                if future["grace"] != "partial":
+                    weight = (weight + int(future["grace"] == "normal")) / growth[i]
+            fixed = balance / weight if weight else Decimal(0)
+        effective = growth[i] - 1
+        interest = balance * effective
         mode = row["grace"]
         if mode == "normal":
-            payment = fixed if weights[i+1] else balance + interest
+            payment = balance + interest if i == last_normal else fixed
             capital = payment - interest
-            closing = balance - capital if weights[i+1] else Decimal(0)
+            closing = Decimal(0) if i == last_normal else balance - capital
         else:
             capital = Decimal(0)
             payment = interest if mode == "partial" else Decimal(0)
             closing = balance if mode == "partial" else balance + interest
         late_rate = (1 + late_tea) ** (Decimal(row["days"]) / 360) - 1
         penalty = payment * late_rate
-        rows.append(dict(period=i+1, day=(i+1)*15, opening=money(balance), interest=money(interest),
+        rows.append(dict(period=i+1, day=(i+1)*period_days, opening=money(balance), interest=money(interest),
+                         tea=rate_text(annual[i]), rate_percent=rate_text(effective*100),
+                         late_percent=rate_text(late_rate*100),
                          payment=money(payment), capital=money(capital), closing=money(closing),
                          late_rate=rate_text(late_rate), penalty=money(penalty), total=money(payment+penalty)))
         interests += interest
         payments += payment
         penalties += penalty
         balance = closing
-    return dict(rows=rows, rate=rate_text(growth-1), principal=money(principal), interest=money(interests),
-                penalty=money(penalties), total=money(payments+penalties))
+    return dict(rows=rows, rate=rate_text(growth[0]-1), principal=money(principal), interest=money(interests),
+                penalty=money(penalties), total=money(payments+penalties), total_exact=payments+penalties)

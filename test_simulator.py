@@ -1,7 +1,7 @@
 import unittest
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
-from glori.simulator import simulate
+from glori.simulator import schedule, simulate
 
 
 def loan(*modes):
@@ -10,6 +10,33 @@ def loan(*modes):
 
 
 class SimulatorTests(unittest.TestCase):
+    def test_class_example_with_total_grace_and_rate_change(self):
+        periods = loan("total", *["normal"] * 7)["periods"]
+        with localcontext() as context:
+            context.prec = 80
+            result = schedule(Decimal("1440000"), [Decimal(9)] * 4 + [Decimal(8)] * 4,
+                              Decimal("0"), periods, period_days=180)
+        rows = result["rows"]
+        self.assertEqual([row["rate_percent"] for row in rows], ["4.4030651"] * 4 + ["3.9230485"] * 4)
+        self.assertEqual([str(row["payment"]) for row in rows], ["0.00"] + ["254225.60"] * 3 + ["251372.54"] * 4)
+        self.assertEqual([str(row["closing"]) for row in rows], [
+            "1503404.14", "1315374.40", "1119065.59", "914113.18",
+            "698601.75", "474635.69", "241883.34", "0.00",
+        ])
+
+    def test_initial_payment_and_optional_repricing(self):
+        case = {**loan("total", "normal", "normal", "normal"),
+                "principal": "400", "initial": "50", "rate_change": {"period": 3, "tea": "20"}}
+        result = simulate(case)
+        self.assertEqual(result["principal"], Decimal("350.00"))
+        self.assertEqual(result["sale_total"], result["total"] + Decimal("50.00"))
+        self.assertEqual([row["tea"] for row in result["rows"]], ["25", "25", "20", "20"])
+        self.assertEqual(result["rows"][-1]["closing"], 0)
+        with self.assertRaisesRegex(ValueError, "inicial"):
+            simulate({**case, "initial": "400"})
+        with self.assertRaisesRegex(ValueError, "segunda"):
+            simulate({**case, "rate_change": {"period": 1, "tea": "20"}})
+
     def test_grace_and_five_days_late(self):
         case = loan("total", "partial", "normal", "normal")
         case["periods"][0]["days"] = case["periods"][2]["days"] = 5

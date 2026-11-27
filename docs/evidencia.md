@@ -62,3 +62,9 @@ Usa fecha de corte 20 a las 18:00, pago pactado el 26 y zona `America/Lima`. Par
 | Cierre | Reportes y bitácora de uso de IA completada por el equipo | 1 min |
 
 Las convenciones corresponden al enunciado SI642, pp. 2–3 y Anexo A. Las pruebas semanales conservan las 16 filas de las tres simulaciones del informe del Grupo 3 como evidencia del avance anterior.
+
+## Simulador para la exposición
+
+En **Simulador**, pulsa **Cargar ejemplo de bodega**. El precio es S/ 400 y la inicial S/ 50, por lo que se financian S/ 350. La primera quincena tiene gracia total. En el cuarto periodo la TEA baja de 24 % a 20 % y la cuota se recalcula con el saldo y los periodos restantes. Ese periodo incluye tres días de demora a una TEA de mora de 30 %.
+
+La conversión de tasas y el tratamiento de la gracia se contrastaron con *Matemática Financiera* de José M. Martín Senmache Sarmiento, 4.ª edición, pp. 72–73 y 257–259. Para la mora se siguió el apartado 6.3.10 del informe del Grupo 3. La prueba del ejemplo de clase usa 180 días por periodo y reproduce las ocho filas de la captura. La pantalla de bodega usa 15 días fijos.

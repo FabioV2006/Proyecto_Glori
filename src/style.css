@@ -104,6 +104,11 @@ summary { cursor: pointer; }
 }
 .sim-table { white-space: nowrap; font-size: .88rem; }
 .sim-table td { text-align: right; }
+.sim-field { align-content: start; gap: .4rem; }
+.sim-table .sim-groups th { background: var(--pine); color: white; }
+.sim-table .sim-groups th + th { border-left: 1px solid #ffffff60; }
+.sim-table tr.sim-rate-change > * { border-top: 2px solid var(--pine); background: #edf3e8; }
+.sim-table td:nth-child(7), .sim-table td:last-child { font-weight: 700; }
 .sim-table input { min-width: 5rem; }
 .sim-table select { min-width: 7rem; }
 .sim-chart { margin: 0; }
