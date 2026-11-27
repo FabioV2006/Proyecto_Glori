@@ -132,7 +132,35 @@ def create_app(test_config=None):
     @app.get("/api/shops")
     @access("platform")
     def shops():
-        return jsonify(connection().execute("SELECT * FROM shops ORDER BY id").fetchall())
+        return jsonify(connection().execute(
+            """SELECT s.*, EXISTS(SELECT 1 FROM showcase d WHERE d.shop_id=s.id) AS showcase
+               FROM shops s ORDER BY s.id"""
+        ).fetchall())
+
+    @app.post("/api/showcase/access")
+    @access("platform")
+    def enter_showcase():
+        role = data().get("role")
+        if role not in ("shop", "client"):
+            abort(400, "Selecciona un perfil de la demostración.")
+        user = connection().execute(
+            """SELECT u.id FROM showcase d JOIN shops s ON s.id=d.shop_id
+               JOIN users u ON u.shop_id=d.shop_id AND
+                 u.id=CASE WHEN %s='shop' THEN d.merchant_id ELSE d.customer_id END
+               WHERE u.role=%s AND u.active AND s.active""", (role, role),
+        ).fetchone()
+        if not user:
+            abort(404, "La demostración está inactiva.")
+        session.clear()
+        session["user_id"] = user["id"]
+        return jsonify(ok=True)
+
+    @app.cli.command("seed-showcase")
+    def seed_showcase():
+        from datetime import datetime
+        from .showcase import populate
+        populate(connection(), datetime.now(ZoneInfo("America/Lima")))
+        click.echo("Tienda de presentación preparada.")
 
     @app.post("/api/shops")
     @access("platform")

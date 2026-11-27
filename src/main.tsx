@@ -22,7 +22,7 @@ type User = {
   timezone?: string
 }
 
-type Shop = { id: number; name: string; timezone: string; active: boolean }
+type Shop = { id: number; name: string; timezone: string; active: boolean; showcase: boolean }
 const roles = { platform: 'Administrador de plataforma', shop: 'Administrador de tienda', client: 'Cliente' }
 const sections = [
   ['Inicio', House], ['Catálogo', Package], ['Clientes', ContactRound], ['Nueva venta', ReceiptText],
@@ -85,7 +85,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   </main>
 }
 
-function Shops({ switchAccount }: { switchAccount: () => void }) {
+function Shops({ switchAccount, onEnter }: { switchAccount: () => void; onEnter: (user: User) => void }) {
   const [shops, setShops] = useState<Shop[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -93,6 +93,18 @@ function Shops({ switchAccount }: { switchAccount: () => void }) {
   const [creating, setCreating] = useState(false)
   async function refresh() {
     setShops(await api<Shop[]>('/shops'))
+  }
+  async function enterShowcase(role: 'shop' | 'client') {
+    setBusy(true)
+    setError('')
+    try {
+      await api('/showcase/access', 'POST', {role})
+      onEnter(await api<User>('/me'))
+    } catch (failure) {
+      setError((failure as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
   useEffect(() => {
     void refresh().catch(failure => setError(failure.message)).finally(() => setLoading(false))
@@ -127,6 +139,12 @@ function Shops({ switchAccount }: { switchAccount: () => void }) {
     <div className="page-head"><div><h1>Tiendas</h1><p>Administra los comercios de la plataforma.</p></div>
       {!creating && <button onClick={() => setCreating(true)}>Nueva tienda</button>}
     </div>
+    {shops.some(shop => shop.showcase && shop.active) && <section className="panel stack">
+      <h2>Bodega Santa Rosa · Demostración</h2>
+      <p>Consulta el cronograma de Ana Torres, la deuda vencida de Luis Medina y el cobro de Rosa Campos.</p>
+      <div className="actions"><button disabled={busy} onClick={() => void enterShowcase('shop')}>Entrar a la tienda demo</button>
+        <button className="secondary" disabled={busy} onClick={() => void enterShowcase('client')}>Ver como Ana Torres</button></div>
+    </section>}
     <section className="panel account-guide">
       <div><h2>Operar una tienda</h2>
         <p>Ingresa con el usuario de un comercio para registrar ventas, consultar cuentas y cobrar.</p>
@@ -195,7 +213,7 @@ function App() {
         <button className="secondary" onClick={() => void logout()}><LogOut size={16} aria-hidden="true" />Cerrar sesión</button>
       </header>
       <main key={section}><ErrorMessage message={error} />
-        {user.role === 'platform' ? <Shops switchAccount={() => void logout()} /> : user.role === 'client' ? <><MyProfile /><CustomerAccount /></> :
+        {user.role === 'platform' ? <Shops switchAccount={() => void logout()} onEnter={setUser} /> : user.role === 'client' ? <><MyProfile /><CustomerAccount /></> :
           section === 'Catálogo' ? <Catalog key="products" mode="products" /> :
           section === 'Clientes' ? <Catalog key="clients" mode="clients" /> :
           section === 'Nueva venta' ? <NewSale demo={!!user.demo_dates} /> :

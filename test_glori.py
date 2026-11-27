@@ -53,6 +53,35 @@ class PostgresAppTests(unittest.TestCase):
             self.assertEqual(user.post("/api/logout", json={}).status_code, 200)
             self.assertIsNone(user.get("/api/me").json)
 
+    def test_showcase_is_ready_and_repeatable(self):
+        run = self.app.test_cli_runner().invoke
+        for _ in range(2):
+            seeded = run(args=["seed-showcase"])
+            if seeded.exception:
+                raise seeded.exception
+        platform = self.sign_in("demo.plataforma")
+        self.assertEqual(sum(s["showcase"] for s in platform.get("/api/shops").json), 1)
+        self.assertEqual(platform.post("/api/showcase/access", json={"role":"shop"}).status_code, 200)
+        self.assertEqual(len(platform.get("/api/products").json), 5)
+        clients = {c["name"]: c["id"] for c in platform.get("/api/clients").json}
+        self.assertEqual(len(clients), 4)
+        def account(name):
+            return platform.post(f"/api/clients/{clients[name]}/account", json={}).json
+        luis = account("Luis Medina")
+        self.assertEqual(luis["liquidation"]["capital"], "129.00")
+        self.assertEqual(len(luis["statements"][0]["purchases"]), 2)
+        rosa = account("Rosa Campos")
+        self.assertEqual(len(rosa["payments"]), 1)
+        self.assertEqual(rosa["payments"][0]["capital"], "218.00")
+        ana_id = clients["Ana Torres"]
+        schedule = platform.get(f"/api/clients/{ana_id}/schedules").json[0]
+        self.assertEqual([i["paid"] for i in schedule["installments"]], [True, False, False])
+        self.assertEqual(platform.post("/api/showcase/access", json={"role":"client"}).status_code, 403)
+        platform = self.sign_in("demo.plataforma")
+        self.assertEqual(platform.post("/api/showcase/access", json={"role":"client"}).status_code, 200)
+        self.assertEqual(platform.get("/api/my-account").json["name"], "Ana Torres")
+        self.assertEqual(platform.get("/api/clients").status_code, 403)
+
     def test_web_bootstrap_health_and_demo_options(self):
         guest = self.app.test_client()
         self.assertEqual(guest.get("/healthz").json, {"ok": True})

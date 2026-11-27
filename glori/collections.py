@@ -219,9 +219,16 @@ def pay(client_id):
         abort(409, "El cobro debe ser por el importe exigible íntegro.")
     if payload.get("expected") != due["expected"]:
         abort(409, "La liquidación cambió. Actualiza el estado de cuenta.")
+    payment = store_payment(db, client, key, now, due)
+    result = receipt(db, payment)
+    db.commit()
+    return jsonify(result), 201
 
+
+def store_payment(db, client, key, now, due):
+    scope = (client["shop_id"], client["id"])
     payment = insert(db, "payments", dict(
-        shop_id=scope[0], client_id=client_id, idempotency_key=key, paid_at=now,
+        shop_id=scope[0], client_id=scope[1], idempotency_key=key, paid_at=now,
         currency=client["currency"], **{key: due[key] for key in ("amount", "mora", "interest", "capital")},
     ))
     for row in due["rows"]:
@@ -244,9 +251,7 @@ def pay(client_id):
                    FROM installments i WHERE i.shop_id=%s AND i.id=%s
                    AND s.id=i.sale_id AND s.shop_id=i.shop_id""", (scope[0], installment),
             )
-    result = receipt(db, payment)
-    db.commit()
-    return jsonify(result), 201
+    return payment
 
 
 def close_cycles():

@@ -147,6 +147,15 @@ def confirm():
     client, mode, months, lines, plan, credit = prepare(db, payload, lock=True)
     if payload.get("expected") != quote_key(plan, client, mode, lines):
         abort(409, "La cotización cambió. Revisa la nueva vista previa antes de confirmar.")
+    sale = store_sale(db, client, mode, months, lines, plan)
+    db.commit()
+    return jsonify({
+        **format_sale(plan), "id": sale["id"], "mode": mode, "lines": lines,
+        "currency": client["currency"], "credit_available": credit - plan["financed_principal"],
+    }), 201
+
+
+def store_sale(db, client, mode, months, lines, plan):
     terms = {key: client[key] for key in (
         "cutoff_day", "payment_day", "compensatory", "moratory", "timezone", "max_months",
     )}
@@ -162,11 +171,7 @@ def confirm():
         insert(db, "sale_lines", {**item, "shop_id": shop_id, "sale_id": sale["id"]})
     for item in plan["installments"]:
         insert(db, "installments", {**item, "shop_id": shop_id, "sale_id": sale["id"]})
-    db.commit()
-    return jsonify({
-        **format_sale(plan), "id": sale["id"], "mode": mode, "lines": lines,
-        "currency": client["currency"], "credit_available": credit - plan["financed_principal"],
-    }), 201
+    return sale
 
 
 @bp.get("/clients/<int:client_id>/schedules")

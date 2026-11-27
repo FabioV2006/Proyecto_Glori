@@ -85,6 +85,7 @@ with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as db:
     }
     Ejecutar $python @('-B', '-m', 'flask', '--app', 'glori', 'migrate')
     Ejecutar $python @('-B', '-m', 'flask', '--app', 'glori', 'seed-demo')
+    Ejecutar $python @('-B', '-m', 'flask', '--app', 'glori', 'seed-showcase')
     $env:GLORI_SHOW_DEMO_ACCOUNTS = '1'
     Ejecutar $python @('-B', '-m', 'flask', '--app', 'glori', 'run', '--host', '127.0.0.1', '--port', "$PuertoWeb")
 }
