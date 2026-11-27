@@ -6,7 +6,8 @@ from psycopg.types.json import Jsonb
 from . import access, data
 from .catalog import insert, integer
 from .db import connection
-from .finance import quote
+from .finance import factor, quote
+from .simulator import rate_text
 
 bp = Blueprint("sales", __name__, url_prefix="/api")
 
@@ -181,11 +182,14 @@ def schedules(client_id):
     client = client_for_shop(db, client_id)
     rows = db.execute(
         """SELECT id,sold_at,cutoff_at,reference_due,currency,capital,financed_principal,
-                  principal_pending,grace_days,grace_interest
+                  principal_pending,grace_days,grace_interest,terms
            FROM sales WHERE shop_id=%s AND client_id=%s AND mode='monthly'
            ORDER BY sold_at DESC,id DESC""", (client["shop_id"], client_id),
     ).fetchall()
     for sale in rows:
+        rate = sale.pop("terms")["compensatory"]
+        sale["tea"] = rate_text((factor(rate, 360) - 1) * 100)
+        sale["period_rate"] = rate_text((factor(rate, 30) - 1) * 100)
         sale["installments"] = db.execute(
             """SELECT i.sequence,i.due,i.opening,i.interest,i.capital,i.amount,i.closing,
                       pa.payment_id IS NOT NULL AS paid

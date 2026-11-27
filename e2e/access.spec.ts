@@ -24,6 +24,16 @@ test('el simulador recalcula plazo, gracia y mora y bloquea entradas inválidas'
   await expect(rows.nth(0)).toContainText('350.00')
   await expect(rows.nth(3)).toContainText('Nueva tasa')
   await expect(rows.nth(5).getByRole('cell').nth(7)).toHaveText('0.00')
+  const details = page.getByLabel('Datos del cronograma')
+  await expect(details).toContainText('S/ 50.00 (12.5 %)')
+  await expect(details).toContainText('Cada 15 días')
+  await page.getByRole('button', { name: 'Gracia parcial y atraso' }).click()
+  await expect(details).toContainText('S/ 150.00 (30 %)')
+  await expect(page.getByLabel('Días de demora del periodo 2')).toHaveValue('5')
+  await expect(rows).toHaveCount(4)
+  await page.getByRole('button', { name: 'Pago puntual' }).click()
+  await expect(details).toContainText('1 mes')
+  await expect(rows).toHaveCount(2)
 })
 
 test('el acceso y el menú del comercio funcionan a 360 px con movimiento reducido', async ({ page }) => {
@@ -157,6 +167,10 @@ test('el comercio confirma desde pantalla las tres cuotas del ejemplo SI642', as
   await page.locator('select[name=client]').selectOption(String(client.id))
   await page.getByRole('button', { name: 'Consultar cronogramas' }).click()
   await expect(page.getByRole('cell', { name: '2026-12-26' })).toBeVisible()
+  await expect(page.getByLabel('Datos del cronograma')).toContainText('Mensual')
+  await expect(page.getByRole('columnheader', { name: 'TEM (30 días)' })).toBeVisible()
+  await page.getByRole('button', { name: 'Ver ejemplos quincenales' }).click()
+  await expect(page.getByRole('button', { name: 'Cargar ejemplo de bodega' })).toBeVisible()
 })
 
 test('corte inclusivo y cobro íntegro desde Cuentas por cobrar y Pagos', async ({ page }) => {

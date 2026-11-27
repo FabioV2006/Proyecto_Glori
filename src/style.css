@@ -104,6 +104,11 @@ summary { cursor: pointer; }
 }
 .sim-table { white-space: nowrap; font-size: .88rem; }
 .sim-table td { text-align: right; }
+.schedule-data { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); margin: 0; border: 1px solid var(--line); background: #f4f7ee; }
+.schedule-data > div { padding: .6rem .8rem; }
+.schedule-data dt { font-size: .8rem; color: var(--muted); }
+.schedule-data dd { margin: .2rem 0 0; font-weight: 700; }
+.sim-table tr.sim-grace > * { background: #f8efdc; }
 .sim-field { align-content: start; gap: .4rem; }
 .sim-table .sim-groups th { background: var(--pine); color: white; }
 .sim-table .sim-groups th + th { border-left: 1px solid #ffffff60; }

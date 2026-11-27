@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import { ScheduleData } from './schedule-data'
 
 type Period = { grace: string; days: string }
 type Row = { period: number; day: number; opening: string; interest: string; payment: string; capital: string;
   closing: string; tea: string; rate_percent: string; late_percent: string; penalty: string; total: string }
-type Result = { principal: string; sale_total: string; interest: string; penalty: string; rows: Row[] }
+type Result = { principal: string; price: string; initial: string; initial_percent: string; months: number;
+  period_days: number; late_tea: string; sale_total: string; interest: string; penalty: string; rows: Row[] }
 const standard = { grace: 'normal', days: '0' }
 const cashFields = ['opening', 'interest', 'payment', 'capital', 'closing'] as const
+type Example = { price: string; initial: string; tea: string; lateTea: string; months: string;
+  change: { period: string; tea: string } | null; edits: Record<number, Period> }
+const examples = {
+  bodega: { price: '400', initial: '50', tea: '24', lateTea: '30', months: '3',
+    change: { period: '4', tea: '20' }, edits: {0: {grace: 'total', days: '0'}, 3: {grace: 'normal', days: '3'}} },
+  parcial: { price: '500', initial: '150', tea: '25', lateTea: '60', months: '2',
+    change: null, edits: {0: {grace: 'partial', days: '0'}, 1: {grace: 'normal', days: '5'}} },
+  puntual: { price: '240', initial: '40', tea: '18', lateTea: '30', months: '1',
+    change: null, edits: {} },
+} satisfies Record<string, Example>
 
 function Summary({ result }: { result: Result }) {
   const rows = result.rows
@@ -87,13 +99,24 @@ export function Simulator() {
   function edit(i: number, change: Partial<Period>) {
     setEdits(previous => ({ ...previous, [i]: { ...(previous[i] ?? standard), ...change } }))
   }
+  function loadExample(example: Example) {
+    setPrincipal(example.price)
+    setInitial(example.initial)
+    setTea(example.tea)
+    setLateTea(example.lateTea)
+    setMonths(example.months)
+    setChangeEnabled(example.change !== null)
+    setChangePeriod(example.change?.period ?? '2')
+    setNewTea(example.change?.tea ?? '20')
+    setEdits(example.edits)
+  }
   return <><h1>Simulador de préstamos</h1>
-    <section className="panel stack"><div className="page-head"><h2>Datos de la venta</h2>
-      <button className="secondary" type="button" onClick={() => {
-        setPrincipal('400'); setInitial('50'); setTea('24'); setLateTea('30'); setMonths('3')
-        setChangeEnabled(true); setChangePeriod('4'); setNewTea('20')
-        setEdits({0: {grace: 'total', days: '0'}, 3: {grace: 'normal', days: '3'}})
-      }}>Cargar ejemplo de bodega</button></div>
+    <section className="panel stack"><h2>Datos de la venta</h2>
+      <div className="actions">
+        <button className="secondary" type="button" onClick={() => loadExample(examples.bodega)}>Cargar ejemplo de bodega</button>
+        <button className="secondary" type="button" onClick={() => loadExample(examples.parcial)}>Gracia parcial y atraso</button>
+        <button className="secondary" type="button" onClick={() => loadExample(examples.puntual)}>Pago puntual</button>
+      </div>
     <div className="fields">
       <label>Precio de venta (S/)<input type="number" step="0.01" value={principal} onChange={e=>setPrincipal(e.target.value)}/></label>
       <label>Cuota inicial (S/)<input type="number" min="0" step="0.01" value={initial} onChange={e=>setInitial(e.target.value)}/></label>
@@ -110,16 +133,25 @@ export function Simulator() {
       </div>}
     </section>
     <section className="panel stack"><h2>Cronograma simulado</h2>
-      <p>Con gracia total, el interés se suma al saldo. Con gracia parcial, solo se paga el interés. Ingresa días de demora para simular el atraso de una cuota.</p>
+      {result && <ScheduleData entries={[
+        ['Precio de venta', 'S/ ' + result.price],
+        ['Cuota inicial', 'S/ ' + result.initial + ' (' + result.initial_percent + ' %)'],
+        ['Préstamo', 'S/ ' + result.principal],
+        ['Frecuencia', 'Cada ' + result.period_days + ' días'],
+        ['Plazo', result.months + (result.months === 1 ? ' mes' : ' meses')],
+        ['N.º de periodos', String(result.rows.length)],
+        ['TEA de mora', result.late_tea + ' %'],
+      ]} />}
+      <p>La TEP es la tasa efectiva de cada quincena. Con gracia total, el interés se suma al saldo. Con gracia parcial, solo se paga el interés. Ingresa días de demora para simular el atraso de una cuota.</p>
       {message && <p role="alert" className="error">{message}</p>}
       {!message && !result && <small role="status">Calculando…</small>}
       <div className="table-wrap" tabIndex={0} role="region" aria-label="Tabla de cuotas"><table className="sim-table">
         <thead><tr className="sim-groups"><th colSpan={4} scope="colgroup">Condiciones</th><th colSpan={5} scope="colgroup">Plan de pagos (S/)</th><th colSpan={4} scope="colgroup">Simulación de atraso</th></tr>
-        <tr>{['Periodo / día','TEA','Tasa de 15 días','Gracia','Saldo inicial','Interés','Cuota','Capital pagado','Saldo final','Días de demora','Tasa de mora','Mora (S/)','Total a pagar (S/)'].map(t=><th key={t} scope="col">{t}</th>)}</tr></thead>
+        <tr>{['Periodo / día','TEA','TEP (15 días)','Plazo de gracia','Saldo inicial','Interés','Cuota','Amortización','Saldo final','Días de demora','Tasa de mora','Mora (S/)','Total a pagar (S/)'].map(t=><th key={t} scope="col">{t}</th>)}</tr></thead>
         <tbody>{periods.map((period,i) => {
           const row = result?.rows[i]
           const changed = row && i > 0 && row.tea !== result?.rows[i-1].tea
-          return <tr key={i} className={changed ? 'sim-rate-change' : undefined}><th scope="row">{i+1} / {(i+1)*15}</th>
+          return <tr key={i} className={changed ? 'sim-rate-change' : period.grace !== 'normal' ? 'sim-grace' : undefined}><th scope="row">{i+1} / {(i+1)*15}</th>
             <td>{row ? row.tea + ' %' : '—'}{changed && <small>Nueva tasa</small>}</td>
             <td>{row ? row.rate_percent + ' %' : '—'}</td>
             <td><select aria-label={'Gracia del periodo '+(i+1)} value={period.grace} onChange={e=>edit(i,{grace:e.target.value})}>

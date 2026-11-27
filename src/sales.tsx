@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, formValues } from './api'
 import type { Client, Product } from './catalog'
+import { ScheduleData } from './schedule-data'
 
 type Line = { product_id: number; quantity: number }
 type SaleInput = { client_id: number; mode: string; months: number; lines: Line[]; sold_at?: string }
@@ -12,12 +13,13 @@ type Quote = {
   interest_days: number; credit_available: string; expected?: unknown; installments: Installment[]
 }
 
-function ScheduleTable({ installments, showPayment = false }: { installments: Installment[]; showPayment?: boolean }) {
+function ScheduleTable({ installments, rates }: { installments: Installment[]; rates?: {tea: string; period_rate: string} }) {
   return <div className="table-wrap"><table>
-    <thead><tr><th>Cuota</th><th>Vencimiento</th><th>Saldo inicial</th><th>Interés</th><th>Amortización</th><th>Pago</th><th>Saldo final</th>{showPayment && <th>Estado</th>}</tr></thead>
+    <thead><tr><th>Periodo</th><th>Vencimiento</th>{rates && <><th>TEA</th><th>TEM (30 días)</th><th>Plazo de gracia</th></>}<th>Saldo inicial</th><th>Interés</th><th>Amortización</th><th>Cuota</th><th>Saldo final</th>{rates && <th>Estado</th>}</tr></thead>
     <tbody>{installments.map(row => <tr key={row.sequence}><td>{row.sequence}</td><td>{row.due}</td>
+      {rates && <><td>{rates.tea} %</td><td>{rates.period_rate} %</td><td>Sin gracia</td></>}
       <td>{row.opening}</td><td>{row.interest}</td><td>{row.capital}</td><td>{row.amount}</td><td>{row.closing}</td>
-      {showPayment && <td>{row.amount === '0.00' ? 'Sin obligación' : row.paid ? 'Pagada' : 'Pendiente'}</td>}
+      {rates && <td>{row.amount === '0.00' ? 'Sin obligación' : row.paid ? 'Pagada' : 'Pendiente'}</td>}
     </tr>)}</tbody>
   </table></div>
 }
@@ -115,10 +117,11 @@ export function NewSale({ demo }: { demo: boolean }) {
 
 type SavedSchedule = {
   id: number; currency: string; capital: string; principal_pending: string
+  financed_principal: string; tea: string; period_rate: string
   grace_days: number; grace_interest: string; installments: Installment[]
 }
 
-export function Schedules() {
+export function Schedules({ openSimulator }: { openSimulator: () => void }) {
   const [clients, setClients] = useState<Client[]>([])
   const [results, setResults] = useState<SavedSchedule[]>()
   const [error, setError] = useState('')
@@ -138,7 +141,8 @@ export function Schedules() {
     finally { setBusy(false) }
   }
   return <>
-    <h1>Cronogramas</h1>
+    <div className="page-head"><h1>Cronogramas</h1>
+      <button className="secondary" onClick={openSimulator}>Ver ejemplos quincenales</button></div>
     {error && <p className="error" role="alert">{error}</p>}
     <form className="panel stack" onSubmit={consult} onChange={() => setResults(undefined)}>
       <label>Cliente<select name="client" required><option value="">Selecciona un cliente</option>
@@ -149,11 +153,18 @@ export function Schedules() {
     {results?.length === 0 && <p>El cliente aún no tiene ventas financiadas en cuotas.</p>}
     {results?.map(row => <section className="panel stack" key={row.id}>
       <h2>Venta #{row.id}</h2>
-      <div className="fields"><p>Capital original · {row.currency} {row.capital}</p>
-        <p>Gracia · {row.grace_days} días, {row.currency} {row.grace_interest} capitalizados</p>
-        <p>Capital pendiente · {row.currency} {row.principal_pending}</p>
-      </div>
-      <ScheduleTable installments={row.installments} showPayment />
+      <ScheduleData entries={[
+        ['Precio de venta', row.currency + ' ' + row.capital],
+        ['Cuota inicial', row.currency + ' 0.00 (0 %)'],
+        ['Préstamo', row.currency + ' ' + row.capital],
+        ['Frecuencia', 'Mensual (mes comercial de 30 días)'],
+        ['Plazo', row.installments.length + (row.installments.length === 1 ? ' mes' : ' meses')],
+        ['N.º de periodos', String(row.installments.length)],
+        ['Gracia inicial', row.grace_days + ' días antes de las cuotas'],
+        ['Saldo tras la gracia', row.currency + ' ' + row.financed_principal],
+        ['Capital pendiente', row.currency + ' ' + row.principal_pending],
+      ]} />
+      <ScheduleTable installments={row.installments} rates={row} />
     </section>)}
   </>
 }

@@ -14,7 +14,9 @@ def positive(value, label, decimals=16):
 
 
 def rate_text(rate):
-    rounded = rate.quantize(Decimal("0.0000001"), rounding=ROUND_HALF_UP)
+    with localcontext() as context:
+        context.prec = max(context.prec, rate.adjusted() + 10)
+        rounded = rate.quantize(Decimal("0.0000001"), rounding=ROUND_HALF_UP)
     return format(rounded, "f").rstrip("0").rstrip(".")
 
 
@@ -58,6 +60,8 @@ def simulate(payload):
             result = schedule(funded, annual, late_tea / 100, periods)
             total = result.pop("total_exact")
             return {**result, "price": money(principal), "initial": money(Decimal(initial)),
+                    "initial_percent": rate_text(Decimal(initial) / principal * 100),
+                    "months": months, "period_days": 15, "late_tea": rate_text(late_tea),
                     "sale_total": money(total + Decimal(initial))}
     except DecimalException as exc:
         raise ValueError("El resultado excede la precisión admitida. Revisa las tasas y los días.") from exc

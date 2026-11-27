@@ -217,7 +217,7 @@ function App() {
           section === 'Catálogo' ? <Catalog key="products" mode="products" /> :
           section === 'Clientes' ? <Catalog key="clients" mode="clients" /> :
           section === 'Nueva venta' ? <NewSale demo={!!user.demo_dates} /> :
-          section === 'Cronogramas' ? <Schedules /> :
+          section === 'Cronogramas' ? <Schedules openSimulator={() => setShopSection('Simulador')} /> :
           section === 'Simulador' ? <Simulator /> :
           section === 'Cuentas por cobrar' ? <ShopAccount key="account" demo={!!user.demo_dates} isPayment={false} /> :
           section === 'Pagos' ? <ShopAccount key="payments" demo={!!user.demo_dates} isPayment /> :
