@@ -1,7 +1,7 @@
 """Cálculos SI642 independientes de Flask y PostgreSQL."""
 
 from calendar import monthrange
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Context, Decimal, ROUND_HALF_UP, localcontext
 from zoneinfo import ZoneInfo
 
@@ -52,6 +52,10 @@ def cycle(sold_at, zone, cutoff_day, cutoff_time, payment_day):
     return local_date, cutoff_at, due
 
 
+def due_cutoff(due, zone):
+    return datetime.combine(due - timedelta(days=1), time.max, ZoneInfo(zone)).astimezone(timezone.utc)
+
+
 def quote(principal, sold_at, zone, terms, mode, months):
     local_date, cutoff_at, anchor = cycle(
         sold_at, zone, terms["cutoff_day"], terms["cutoff_time"], terms["payment_day"]
@@ -60,22 +64,29 @@ def quote(principal, sold_at, zone, terms, mode, months):
     rate = terms["compensatory"]
     rows = []
     monthly = mode == "monthly"
+    fortnightly = mode == "fortnightly"
+    if fortnightly:
+        anchor = local_date + timedelta(days=15)
+        cutoff_at = due_cutoff(anchor, zone)
+        days = 15
     grace = interest(principal, rate, days) if monthly else ZERO
     financed = principal + grace
-    single_interest = ZERO if monthly else interest(principal, rate, days)
-    if monthly:
+    single_interest = interest(principal, rate, days) if mode == "single" else ZERO
+    if monthly or fortnightly:
         with localcontext(Context(prec=55)):
-            monthly_factor = factor(rate, 30)
-            effective = monthly_factor - 1
-            fixed = money(financed / sum(monthly_factor ** -n for n in range(1, months + 1)))
+            periods = months * 2 if fortnightly else months
+            period_factor = factor(rate, 15 if fortnightly else 30)
+            effective = period_factor - 1
+            fixed = money(financed / sum(period_factor ** -n for n in range(1, periods + 1)))
             balance = financed
-            for n in range(1, months + 1):
+            for n in range(1, periods + 1):
                 row_interest = money(balance * effective)
                 payoff = balance + row_interest
-                payment = payoff if n == months else min(fixed, payoff)
+                payment = payoff if n == periods else min(fixed, payoff)
                 capital = payment - row_interest
                 rows.append(dict(
-                    sequence=n, due=month_day(anchor, n, terms["payment_day"]), opening=balance,
+                    sequence=n, due=(anchor + timedelta(days=15*(n-1)) if fortnightly else
+                                     month_day(anchor, n, terms["payment_day"])), opening=balance,
                     interest=row_interest, capital=capital, amount=payment, closing=balance-capital,
                 ))
                 balance -= capital

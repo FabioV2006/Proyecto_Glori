@@ -119,7 +119,7 @@ export function Catalog({ mode }: { mode: 'products' | 'clients' }) {
           <Field title="Precio contado" name="cash_price" value={product?.cash_price} type="number" min={0} step="0.01" />
           <Field title="Precio crédito" name="credit_price" value={product?.credit_price} type="number" min={.01} step="0.01" />
           <label className="check"><input type="checkbox" name="single_allowed" defaultChecked={product?.single_allowed ?? true} />Pago único</label>
-          <label className="check"><input type="checkbox" name="monthly_allowed" defaultChecked={product?.monthly_allowed ?? true} />Francés mensual</label>
+          <label className="check"><input type="checkbox" name="monthly_allowed" defaultChecked={product?.monthly_allowed ?? true} />Crédito en cuotas</label>
         </> : <>
           <Field title="Documento" name="document" value={client?.document} optional />
           <Field title="Teléfono" name="phone" type="tel" value={client?.phone} optional />

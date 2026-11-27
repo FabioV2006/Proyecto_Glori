@@ -181,14 +181,35 @@ class PostgresAppTests(unittest.TestCase):
         }).json
         return shop, product["id"], client["id"]
 
-    def register_sale(self, shop, product, client, sold_at, mode="single", quantity=1):
-        payload = dict(client_id=client, sold_at=sold_at, mode=mode, months=3,
+    def register_sale(self, shop, product, client, sold_at, mode="single", quantity=1, months=3):
+        payload = dict(client_id=client, sold_at=sold_at, mode=mode, months=months,
                        lines=[dict(product_id=product, quantity=quantity)])
         preview = shop.post("/api/sales/preview", json=payload)
         self.assertEqual(preview.status_code, 200, preview.json)
         sale = shop.post("/api/sales", json={**payload, "expected": preview.json["expected"]})
         self.assertEqual(sale.status_code, 201, sale.json)
         return sale.json
+
+    def test_fortnightly_sale_persists_dates_and_collects_due_installment(self):
+        shop, product, client = self.sales_fixture("VentaQuincenal")
+        self.register_sale(shop, product, client, "2026-09-15T12:00:00-05:00", "fortnightly", months=1)
+        path = f"/api/clients/{client}"
+        plan = shop.get(path + "/schedules").json[0]
+        self.assertEqual((plan["mode"], plan["months"], plan["period_days"]), ("fortnightly", 1, 15))
+        self.assertEqual(plan["period_rate"], "0.9003262")
+        self.assertEqual([row["due"] for row in plan["installments"]], ["2026-09-30", "2026-10-15"])
+        self.assertEqual(plan["installments"][-1]["closing"], "0.00")
+        now = "2026-10-01T12:00:00-05:00"
+        account = shop.post(path + "/account", json={"as_of": now}).json
+        self.assertEqual(len(account["statements"][0]["installments"]), 1)
+        due = account["liquidation"]
+        self.assertEqual([row["days_late"] for row in due["rows"]], [1])
+        payment = shop.post(path + "/payments", json=dict(
+            as_of=now, expected=due["expected"], amount=due["amount"], idempotency_key="fortnightly",
+        ))
+        self.assertEqual(payment.status_code, 201, payment.json)
+        plan = shop.get(path + "/schedules").json[0]
+        self.assertEqual([row["paid"] for row in plan["installments"]], [True, False])
 
     def test_sales_persist_original_conditions_and_limit(self):
         from glori.db import connection

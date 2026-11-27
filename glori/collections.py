@@ -11,7 +11,7 @@ from psycopg.types.json import Jsonb
 from . import access, data, required
 from .catalog import decimal_value, insert
 from .db import connection
-from .finance import ZERO, interest, month_day
+from .finance import ZERO, due_cutoff, interest, month_day
 from .sales import available, client_for_shop, instant
 
 bp = Blueprint("collections", __name__, url_prefix="/api")
@@ -49,7 +49,7 @@ def generate(db, client, now):
            ORDER BY sold_at,id""", (*scope, now),
     ).fetchall()
     installments = db.execute(
-        """SELECT i.id,i.due,s.currency,s.terms FROM installments i
+        """SELECT i.id,i.due,s.currency,s.terms,s.mode FROM installments i
            JOIN sales s ON i.sale_id=s.id AND i.shop_id=s.shop_id
            WHERE s.shop_id=%s AND s.client_id=%s AND i.amount>0
            AND NOT EXISTS (SELECT 1 FROM statement_installments si WHERE si.installment_id=i.id)
@@ -59,7 +59,8 @@ def generate(db, client, now):
     for sale in sales:
         groups[(sale["cutoff_at"], sale["reference_due"], sale["currency"])]["sales"].append(sale)
     for row in installments:
-        cutoff = installment_cutoff(row["due"], row["terms"])
+        cutoff = (due_cutoff(row["due"], row["terms"]["timezone"]) if row["mode"] == "fortnightly"
+                  else installment_cutoff(row["due"], row["terms"]))
         if cutoff < now:
             groups[(cutoff, row["due"], row["currency"])]["installments"].append(row)
     for (cutoff, due, currency), group in sorted(groups.items()):

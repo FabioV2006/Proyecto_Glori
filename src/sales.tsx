@@ -13,9 +13,9 @@ type Quote = {
   interest_days: number; credit_available: string; expected?: unknown; installments: Installment[]
 }
 
-function ScheduleTable({ installments, rates }: { installments: Installment[]; rates?: {tea: string; period_rate: string} }) {
+function ScheduleTable({ installments, rates }: { installments: Installment[]; rates?: {tea: string; period_rate: string; period_days: number} }) {
   return <div className="table-wrap"><table>
-    <thead><tr><th>Periodo</th><th>Vencimiento</th>{rates && <><th>TEA</th><th>TEM (30 días)</th><th>Plazo de gracia</th></>}<th>Saldo inicial</th><th>Interés</th><th>Amortización</th><th>Cuota</th><th>Saldo final</th>{rates && <th>Estado</th>}</tr></thead>
+    <thead><tr><th>Periodo</th><th>Vencimiento</th>{rates && <><th>TEA</th><th>{rates.period_days === 15 ? 'TEP (15 días)' : 'TEM (30 días)'}</th><th>Plazo de gracia</th></>}<th>Saldo inicial</th><th>Interés</th><th>Amortización</th><th>Cuota</th><th>Saldo final</th>{rates && <th>Estado</th>}</tr></thead>
     <tbody>{installments.map(row => <tr key={row.sequence}><td>{row.sequence}</td><td>{row.due}</td>
       {rates && <><td>{rates.tea} %</td><td>{rates.period_rate} %</td><td>Sin gracia</td></>}
       <td>{row.opening}</td><td>{row.interest}</td><td>{row.capital}</td><td>{row.amount}</td><td>{row.closing}</td>
@@ -76,9 +76,11 @@ export function NewSale({ demo }: { demo: boolean }) {
         <label>Modalidad<select value={mode} onChange={event => {
           setMode(event.target.value)
           setLines([{ product_id: 0, quantity: 1 }])
-        }}><option value="single">Pago único por ciclo</option><option value="monthly">Francés mensual</option></select></label>
+        }}><option value="single">Pago único por ciclo</option><option value="fortnightly">Cuotas cada 15 días</option><option value="monthly">Francés mensual</option></select></label>
         {mode === 'monthly' && <label>Cuotas mensuales<input type="number" name="months" min={1} defaultValue={3} required />
           <small>El plazo debe respetar el máximo del cliente.</small></label>}
+        {mode === 'fortnightly' && <label>Plazo total en meses<input type="number" name="months" min={1} defaultValue={1} required />
+          <small>Dos cuotas por mes comercial. La primera vence 15 días después de la venta.</small></label>}
         {demo && <label>Fecha y hora de compra para demo<input name="sold_at" placeholder="2026-09-15T12:00:00-05:00" />
           <small>Formato ISO con desplazamiento horario. En blanco se toma la hora actual.</small></label>}
       </div>
@@ -103,11 +105,12 @@ export function NewSale({ demo }: { demo: boolean }) {
       <h2>{preview.id ? 'Venta registrada #' + preview.id : 'Detalle del financiamiento'}</h2>
       <div className="fields"><p>Capital · {preview.currency} {preview.capital}</p>
         <p>Crédito disponible · {preview.currency} {preview.credit_available}</p>
-        <p>{preview.mode === 'single' ? 'Vencimiento' : 'Fin de gracia'} · {preview.reference_due}</p>
+        <p>{preview.mode === 'monthly' ? 'Fin de gracia' : 'Primer vencimiento'} · {preview.reference_due}</p>
         {preview.mode === 'monthly' ? <>
           <p>Gracia inicial · {preview.grace_days} días</p><p>Interés capitalizado · {preview.grace_interest}</p>
           <p>Capital después de la gracia · {preview.financed_principal}</p>
-        </> : <p>Interés compensatorio · {preview.single_interest} ({preview.interest_days} días)</p>}
+        </> : preview.mode === 'fortnightly' ? <p>Frecuencia · Cada 15 días · {preview.installments.length} cuotas</p>
+          : <p>Interés compensatorio · {preview.single_interest} ({preview.interest_days} días)</p>}
       </div>
       {!!preview.installments.length && <ScheduleTable installments={preview.installments} />}
       {!preview.id && <div><button onClick={() => void confirm()} disabled={busy}>Confirmar venta</button></div>}
@@ -117,7 +120,7 @@ export function NewSale({ demo }: { demo: boolean }) {
 
 type SavedSchedule = {
   id: number; currency: string; capital: string; principal_pending: string
-  financed_principal: string; tea: string; period_rate: string
+  financed_principal: string; tea: string; period_rate: string; period_days: number; months: number
   grace_days: number; grace_interest: string; installments: Installment[]
 }
 
@@ -157,10 +160,10 @@ export function Schedules({ openSimulator }: { openSimulator: () => void }) {
         ['Precio de venta', row.currency + ' ' + row.capital],
         ['Cuota inicial', row.currency + ' 0.00 (0 %)'],
         ['Préstamo', row.currency + ' ' + row.capital],
-        ['Frecuencia', 'Mensual (mes comercial de 30 días)'],
-        ['Plazo', row.installments.length + (row.installments.length === 1 ? ' mes' : ' meses')],
+        ['Frecuencia', row.period_days === 15 ? 'Cada 15 días' : 'Mensual (mes comercial de 30 días)'],
+        ['Plazo total', row.months + (row.months === 1 ? ' mes' : ' meses')],
         ['N.º de periodos', String(row.installments.length)],
-        ['Gracia inicial', row.grace_days + ' días antes de las cuotas'],
+        ['Gracia inicial', row.grace_days ? row.grace_days + ' días antes de las cuotas' : 'Sin gracia'],
         ['Saldo tras la gracia', row.currency + ' ' + row.financed_principal],
         ['Capital pendiente', row.currency + ' ' + row.principal_pending],
       ]} />

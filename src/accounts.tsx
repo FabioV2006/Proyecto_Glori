@@ -17,7 +17,7 @@ type Account = {
   liquidation: Omit<Receipt, 'id' | 'paid_at' | 'currency'> & { rows: Allocation[]; expected: unknown }
 }
 const money = (currency: string, value: string) => currency + ' ' + value
-const modeName = (mode: string) => mode === 'single' ? 'Pago único' : 'Francés mensual'
+export const modeName = (mode: string) => mode === 'single' ? 'Pago único' : mode === 'fortnightly' ? 'Cuotas cada 15 días' : 'Francés mensual'
 function local(iso: string, timezone: string) {
   return new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short', timeZone: timezone }).format(new Date(iso))
 }

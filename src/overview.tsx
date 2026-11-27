@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import { modeName } from './accounts'
 
 type Report = {
   clients: number; products: number
@@ -36,7 +37,7 @@ export function Overview({ reports, navigate, timezone }: {
           <thead><tr><th>Venta</th><th>Cliente</th><th>Fecha</th><th>Modalidad</th><th>Capital</th></tr></thead>
           <tbody>{data.latest.map(row => <tr key={row.id}><td>#{row.id}</td><td>{row.name}</td>
             <td>{new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeZone: timezone }).format(new Date(row.sold_at))}</td>
-            <td>{row.mode === 'single' ? 'Pago único' : 'Francés mensual'}</td><td>{row.currency} {row.capital}</td></tr>)}</tbody>
+            <td>{modeName(row.mode)}</td><td>{row.currency} {row.capital}</td></tr>)}</tbody>
         </table> : <p>Aún no hay ventas registradas.</p>}
       </section>
     </>}

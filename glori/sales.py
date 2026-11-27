@@ -60,9 +60,9 @@ def prepare(db, payload, *, lock):
     if not client["active"]:
         abort(409, "El cliente está inactivo.")
     mode = payload.get("mode")
-    if mode not in ("single", "monthly"):
+    if mode not in ("single", "monthly", "fortnightly"):
         abort(400, "Selecciona una modalidad de crédito.")
-    months = integer(payload, "months", 1, client["max_months"]) if mode == "monthly" else 0
+    months = integer(payload, "months", 1, client["max_months"]) if mode != "single" else 0
     sold_at = instant(payload.get("sold_at"))
     requested_lines = payload.get("lines")
     if not isinstance(requested_lines, list) or not 1 <= len(requested_lines) <= 100:
@@ -83,7 +83,8 @@ def prepare(db, payload, *, lock):
         abort(409, "Hay ítems inactivos o ajenos al catálogo de la tienda.")
     lines = []
     for item in products:
-        if not item[mode + "_allowed"]:
+        allowed = "single_allowed" if mode == "single" else "monthly_allowed"
+        if not item[allowed]:
             abort(409, f"{item['name']} no admite esa modalidad.")
         if item["currency"] != client["currency"]:
             abort(409, f"{item['name']} está cotizado en otra moneda.")
@@ -182,14 +183,15 @@ def schedules(client_id):
     client = client_for_shop(db, client_id)
     rows = db.execute(
         """SELECT id,sold_at,cutoff_at,reference_due,currency,capital,financed_principal,
-                  principal_pending,grace_days,grace_interest,terms
-           FROM sales WHERE shop_id=%s AND client_id=%s AND mode='monthly'
+                  principal_pending,grace_days,grace_interest,terms,mode,months
+           FROM sales WHERE shop_id=%s AND client_id=%s AND mode IN ('monthly','fortnightly')
            ORDER BY sold_at DESC,id DESC""", (client["shop_id"], client_id),
     ).fetchall()
     for sale in rows:
         rate = sale.pop("terms")["compensatory"]
         sale["tea"] = rate_text((factor(rate, 360) - 1) * 100)
-        sale["period_rate"] = rate_text((factor(rate, 30) - 1) * 100)
+        sale["period_days"] = 15 if sale["mode"] == "fortnightly" else 30
+        sale["period_rate"] = rate_text((factor(rate, sale["period_days"]) - 1) * 100)
         sale["installments"] = db.execute(
             """SELECT i.sequence,i.due,i.opening,i.interest,i.capital,i.amount,i.closing,
                       pa.payment_id IS NOT NULL AS paid
