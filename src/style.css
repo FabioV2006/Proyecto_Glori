@@ -102,3 +102,13 @@ summary { cursor: pointer; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   button:active:not(:disabled) { transform: none; }
 }
+.sim-table { white-space: nowrap; font-size: .88rem; }
+.sim-table td { text-align: right; }
+.sim-table input { min-width: 5rem; }
+.sim-table select { min-width: 7rem; }
+.sim-chart { margin: 0; }
+.sim-chart figcaption { font-weight: 600; }
+.sim-chart svg { display: block; width: 100%; margin-block: 1rem; }
+.sim-legend { display: flex; gap: 1rem; }
+.sim-legend span::before { content: ''; display: inline-block; width: .7rem; height: .7rem; background: #245c49; margin-right: .3rem; }
+.sim-legend span + span::before { background: #b6723c; }

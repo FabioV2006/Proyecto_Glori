@@ -1,6 +1,26 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+test('el simulador recalcula plazo, gracia y mora y bloquea entradas inválidas', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Entrar a Bodegas Gloria' }).click()
+  await page.getByRole('button', { name: 'Simulador' }).click()
+  await page.getByLabel('Plazo en meses').fill('2')
+  const table = page.getByRole('table')
+  await expect(table.getByRole('row')).toHaveCount(5)
+  await page.getByLabel('Gracia del periodo 1').selectOption('total')
+  await page.getByLabel('Gracia del periodo 2').selectOption('partial')
+  await page.getByLabel('Días de demora del periodo 3').fill('5')
+  await expect(table.getByRole('row').nth(3)).toContainText('515.10')
+  await expect(page.getByRole('heading', { name: 'Resumen del préstamo' })).toBeVisible()
+  await page.getByLabel('TEA (%)', {exact: true}).fill('0')
+  await expect(page.getByRole('alert')).toContainText('mayor que cero')
+  await expect(table.getByText('515.10')).toHaveCount(0)
+  await page.getByLabel('TEA (%)', {exact: true}).fill('25')
+  await page.getByLabel('Días de demora del periodo 3').fill('-1')
+  await expect(page.getByRole('alert')).toContainText('enteros')
+})
+
 test('el acceso y el menú del comercio funcionan a 360 px con movimiento reducido', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 })
   await page.emulateMedia({ reducedMotion: 'reduce' })

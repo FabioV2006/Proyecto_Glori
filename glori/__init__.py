@@ -11,6 +11,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import close_connection, connection, migrate
+from .simulator import simulate
 
 
 def access(*roles):
@@ -106,6 +107,14 @@ def create_app(test_config=None):
         session.clear()
         session["user_id"] = user["id"]
         return jsonify(ok=True)
+
+    @app.post("/api/simulator")
+    @access("shop")
+    def loan_simulator():
+        try:
+            return jsonify(simulate(data()))
+        except ValueError as error:
+            abort(400, str(error))
 
     @app.get("/api/me")
     def me():

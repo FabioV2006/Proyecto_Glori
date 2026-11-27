@@ -6,6 +6,8 @@ import { Catalog, MyProfile } from './catalog'
 import { NewSale, Schedules } from './sales'
 import { CustomerAccount, ShopAccount } from './accounts'
 import { Overview, Settings } from './overview'
+import { Simulator } from './simulator'
+import { Calculator } from 'lucide-react'
 import { ArrowRight, BookOpen, CalendarDays, ChartColumn, ContactRound, House, LogOut, Menu, Package, ReceiptText, Settings2, Store, Wallet, X } from 'lucide-react'
 import '@fontsource-variable/dm-sans'
 import '@fontsource/fraunces/latin-600.css'
@@ -25,7 +27,7 @@ const roles = { platform: 'Administrador de plataforma', shop: 'Administrador de
 const sections = [
   ['Inicio', House], ['Catálogo', Package], ['Clientes', ContactRound], ['Nueva venta', ReceiptText],
   ['Cuentas por cobrar', BookOpen], ['Cronogramas', CalendarDays], ['Pagos', Wallet],
-  ['Reportes', ChartColumn], ['Configuración', Settings2],
+  ['Simulador', Calculator], ['Reportes', ChartColumn], ['Configuración', Settings2],
 ] as const
 
 function ErrorMessage({ message }: { message: string }) {
@@ -198,6 +200,7 @@ function App() {
           section === 'Clientes' ? <Catalog key="clients" mode="clients" /> :
           section === 'Nueva venta' ? <NewSale demo={!!user.demo_dates} /> :
           section === 'Cronogramas' ? <Schedules /> :
+          section === 'Simulador' ? <Simulator /> :
           section === 'Cuentas por cobrar' ? <ShopAccount key="account" demo={!!user.demo_dates} isPayment={false} /> :
           section === 'Pagos' ? <ShopAccount key="payments" demo={!!user.demo_dates} isPayment /> :
           section === 'Configuración' ? <Settings /> :

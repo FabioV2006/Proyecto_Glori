@@ -7,3 +7,4 @@ Cada integrante debe completar su nombre y porcentaje de apoyo, verificar lo ace
 | Codex | | Motor financiero semanal y casos de prueba | | | |
 | Codex | | Plan de arquitectura, matriz y reglas de calendario | Plan aprobado con ajustes | Corte inclusivo, ajuste de días inexistentes, gracia mensual posterior al corte y mora por estado de cuenta o cuota | |
 | Codex | | Implementación local por hitos | | | |
+| Codex | | Simulador de préstamos según la revisión del profesor | | Quincenas fijas, TEA positiva, gracia y mora por cuota | |
