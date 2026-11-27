@@ -45,9 +45,9 @@ export function Simulator() {
   const validMonths = /^\d+$/.test(months) && Number(months) >= 1 && Number(months) <= 120
   const periods = Array.from({ length: validMonths ? Number(months)*2 : 0 }, (_, i) => edits[i] ?? standard)
   let error = ''
-  for (const [label, value] of [['El monto', principal], ['La TEA', tea], ['La TEA de mora', lateTea]]) {
-    if (!/^\d{1,16}(\.\d{1,16})?$/.test(value) || Number(value) <= 0) {
-      error = label + ' debe ser mayor que cero (hasta 16 dígitos enteros y 16 decimales).'
+  for (const [label, value, decimals] of [['El monto', principal, 16], ['La TEA', tea, 7], ['La TEA de mora', lateTea, 7]] as const) {
+    if (!/^\d{1,16}(\.\d+)?$/.test(value) || Number(value) <= 0 || (value.split('.')[1]?.length ?? 0) > decimals) {
+      error = label + ' debe ser mayor que cero (hasta 16 dígitos enteros y ' + decimals + ' decimales).'
       break
     }
   }

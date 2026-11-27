@@ -6,23 +6,24 @@ from decimal import Context, Decimal, DecimalException, ROUND_HALF_UP, localcont
 from .finance import money
 
 
-def positive(value, label):
+def positive(value, label, decimals=16):
     raw = str(value)
-    if not re.fullmatch(r"[0-9]{1,16}(?:\.[0-9]{1,16})?", raw) or Decimal(raw) <= 0:
-        raise ValueError(f"{label} debe ser mayor que cero (hasta 16 dígitos enteros y 16 decimales).")
+    if not re.fullmatch(rf"[0-9]{{1,16}}(?:\.[0-9]{{1,{decimals}}})?", raw) or Decimal(raw) <= 0:
+        raise ValueError(f"{label} debe ser mayor que cero (hasta 16 dígitos enteros y {decimals} decimales).")
     return Decimal(raw)
 
 
 def rate_text(rate):
-    return format(rate.quantize(Decimal("0.0000001"), rounding=ROUND_HALF_UP), "f")
+    rounded = rate.quantize(Decimal("0.0000001"), rounding=ROUND_HALF_UP)
+    return format(rounded, "f").rstrip("0").rstrip(".")
 
 
 def simulate(payload):
     if set(payload) != {"principal", "tea", "late_tea", "months", "periods"}:
         raise ValueError("Indica monto, TEA, TEA de mora, plazo y configuración por periodo.")
     principal = positive(payload["principal"], "El monto")
-    tea = positive(payload["tea"], "La TEA")
-    late_tea = positive(payload["late_tea"], "La TEA de mora")
+    tea = positive(payload["tea"], "La TEA", decimals=7)
+    late_tea = positive(payload["late_tea"], "La TEA de mora", decimals=7)
     months = payload["months"]
     if type(months) is not int or not 1 <= months <= 120:
         raise ValueError("El plazo debe ser un entero de 1 a 120 meses.")
